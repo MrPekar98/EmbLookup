@@ -112,6 +112,9 @@ if __name__ == "__main__":
     output_file = 'results.csv'
     has_headers = len(sys.argv) == 3 and sys.argv[2] == '-h'
 
+    if not table_dir.endswith('/'):
+        table_dir += '/'
+
     try:
         files = os.listdir(table_dir)
 
@@ -131,7 +134,7 @@ if __name__ == "__main__":
             for table_file in files:
                 table_id = table_file.replace('.csv', '')
 
-                with open(table_file, 'r') as in_file:
+                with open(table_dir + table_file, 'r') as in_file:
                     row = 0
                     column = 0
                     reader = csv.reader(in_file, delimiter = ',')
