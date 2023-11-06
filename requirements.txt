@@ -1,7 +1,6 @@
+pandas
+torch
 faiss-cpu
-faiss==1.5.3
 pytorch_metric_learning
 sqlalchemy
 fasttext
-torch
-pandas
