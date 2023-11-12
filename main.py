@@ -1,7 +1,10 @@
 # Usage:
-#        python3 main.py <CSV DIR> [-h]
+#        python3 main.py <CSV_DIR> <ALIAS_FILE> <INDEX_MAPPING_FILE> <PROCESSED_ALIASES> [-h]
 #
-# <CSV FILE>: Directory of CSV files of tables to be linked to KG
+# <CSV_FILE>: Directory of CSV files of tables to be linked to KG
+# <ALIAS_FILE>: CSV file of KG entity aliases
+# <INDEX_MAPPING_FILE>: Mapping CSV file of KG entities
+# <PROCESSED_ALIASES>: CSV file of pre-processed alieases
 # -h: Flag to tell that the tables have headers
 
 import pandas as pd
@@ -25,7 +28,7 @@ def get_kg_alias_data_loader(kg_alias_dataset_file_name, configs, dataset_name):
     return data_loader
 
 def setup_and_train_model():
-    kg_alias_dataset_file_name = "aliases_processed.csv"
+    kg_alias_dataset_file_name = sys.argv[4]
     output_file_name="emblookup.pth"
     dataset_name="dataset"
 
@@ -38,7 +41,7 @@ def setup_and_train_model():
     return emblookup_model
 
 def index_kg_aliases():
-    kg_alias_mapping_file_name = "kg_index_name_mapping.csv"
+    kg_alias_mapping_file_name = sys.argv[3]
     dataset_name="dataset"
     model_file_name="emblookup.pth"
     faiss_index_file_name="emblookup.findex"
@@ -69,7 +72,7 @@ class LookupFromFAISSIndex:
         self.dataset_name = "dataset"
         self.model_file_name="emblookup.pth"
         self.faiss_index_file_name="emblookup.findex"
-        self.mapping_file_name="kg_index_name_mapping.csv"
+        self.mapping_file_name=sys.argv[3]
 
         # Create an index class with default params
         self.index = faiss_indexes.ApproximateProductQuantizedFAISSIndex()
@@ -104,58 +107,56 @@ class LookupFromFAISSIndex:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print('Missing table file')
+    if len(sys.argv) < 5:
+        print('Missing argument. See top of this file for instructions.')
         exist(1)
 
     table_dir = sys.argv[1]
     output_file = 'results.csv'
-    has_headers = len(sys.argv) == 3 and sys.argv[2] == '-h'
+    has_headers = len(sys.argv) == 5 and sys.argv[5] == '-h'
 
     if not table_dir.endswith('/'):
         table_dir += '/'
 
-    try:
-        files = os.listdir(table_dir)
+    files = os.listdir(table_dir)
 
-        print("Training EmbLookup model")
-        emblookup_model = setup_and_train_model()
+    print("Training EmbLookup model")
+    emblookup_model = setup_and_train_model()
 
-        print("Creating FAISS index based on embeddings")
-        index_kg_aliases()
+    print("Creating FAISS index based on embeddings")
+    index_kg_aliases()
 
-        print('Linking')
-        emblookup = LookupFromFAISSIndex()
-        start = time.time()
+    print('Linking')
+    emblookup = LookupFromFAISSIndex()
+    start = time.time()
 
-        with open(output_file, 'w') as out_file:
-            writer = csv.writer(out_file, delimiter = ',')
+    with open(output_file, 'w') as out_file:
+        writer = csv.writer(out_file, delimiter = ',')
 
-            for table_file in files:
-                table_id = table_file.replace('.csv', '')
+        for table_file in files:
+            table_id = table_file.replace('.csv', '')
 
-                with open(table_dir + table_file, 'r') as in_file:
-                    row = 0
-                    column = 0
-                    reader = csv.reader(in_file, delimiter = ',')
-                    skip = has_headers
+            with open(table_dir + table_file, 'r') as in_file:
+                row_i = 0
+                reader = csv.reader(in_file, delimiter = ',')
+                skip = has_headers
 
-                    for row in reader:
-                        if skip:
-                            skip = False
-                            continue
+                for row in reader:
+                    column_i = 0
 
-                        for column in row:
+                    if skip:
+                        skip = False
+                        continue
+
+                    for column in row:
+                        if not column.lstrip('-').replace('.', '', 1).replace('e-', '', 1).replace('e', '', 1).isdigit() and len(column) > 0:
                             entity = emblookup.lookup(column)
 
                             if not entity is None:
                                 writer.writerow([table_id, row, column, entity])
 
-                            column += 1
+                        column_i += 1
 
-                        row += 1
+                    row_i += 1
 
-        duration = time.time() - start
-
-    except Exception as e:
-        print('Error: ' + str(e))
+    duration = time.time() - start
