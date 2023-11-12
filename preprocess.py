@@ -1,10 +1,11 @@
-#GiG
+# Usage: python preprocess.py <ALIAS_FILE> <OUTPUT_PROCESSED_ALIASES_FILE> <KG_INDEX_MAPPING_FILE>
 
 import pandas as pd
 import csv 
 import json 
 import re 
 import utils
+import sys
 
 #file_name is the input containing list of aliases such as from https://downloads.dbpedia.org/repo/dbpedia/wikidata/alias/2021.02.01/alias.ttl.bz2
 #max_length_to_truncate: remove all aliases with length > max_length_to_truncate
@@ -113,7 +114,9 @@ def map_index_to_entity_name(input_file_name, output_file_name):
     output_f.close()
 
 if __name__ == "__main__":
-    #File is downloaded from https://downloads.dbpedia.org/repo/dbpedia/wikidata/alias/2021.02.01/alias.ttl.bz2
-    process_aliases("alias.ttl", "aliases_processed.csv")
-    map_index_to_entity_name("aliases_processed.csv", "kg_index_name_mapping.csv")
-    
+    if len(sys.argv) < 4:
+        print('Not all arguments are given')
+        exit(1)
+
+    process_aliases(sys.argv[1], sys.argv[2])
+    map_index_to_entity_name(sys.argv[2], sys.argv[3])
