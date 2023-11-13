@@ -86,6 +86,7 @@ class LookupFromFAISSIndex:
         # avoid this and read string as is
         df = pd.read_csv(self.mapping_file_name, keep_default_na=False, na_values=[''])
         self.mentions = df["Alias"].tolist()
+        self.ids = df["KGID"].tolist()
         df = None
         self.index.set_index_to_mention_mapping(self.mentions)
 
@@ -93,18 +94,21 @@ class LookupFromFAISSIndex:
         self.fasttext_model = utils.load_fasttext_model()
 
     def lookup(self, query):
-        query = query.lower()
-        alias_str_tensor = self.string_helper.string_to_tensor(query)
-        alias_str_tensor = torch.unsqueeze(alias_str_tensor, dim=0)
+        try:
+            query = query.lower()
+            alias_str_tensor = self.string_helper.string_to_tensor(query)
+            alias_str_tensor = torch.unsqueeze(alias_str_tensor, dim=0)
 
-        fasttext_embedding = torch.tensor(self.fasttext_model.get_word_vector(query))
-        fasttext_embedding = torch.unsqueeze(fasttext_embedding, dim=0)
+            fasttext_embedding = torch.tensor(self.fasttext_model.get_word_vector(query))
+            fasttext_embedding = torch.unsqueeze(fasttext_embedding, dim=0)
 
-        embedding = self.emblookup_model.get_embedding(alias_str_tensor, fasttext_embedding)
-        distances, indices, words = self.index.lookup(embedding.numpy(), k=5)
-        print(f"{query}: {words}")
-        print(f"{query}: {indices}")
+            embedding = self.emblookup_model.get_embedding(alias_str_tensor, fasttext_embedding)
+            distances, indices, words = self.index.lookup(embedding.numpy(), k=5)
 
+            return self.ids[indices[0][0]]
+
+        except ValueError as e:
+            return None
 
 if __name__ == "__main__":
     if len(sys.argv) < 5:
