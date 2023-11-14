@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     table_dir = sys.argv[1]
     output_file = 'results.csv'
-    has_headers = len(sys.argv) == 5 and sys.argv[5] == '-h'
+    has_headers = len(sys.argv) == 6 and sys.argv[5] == '-h'
 
     if not table_dir.endswith('/'):
         table_dir += '/'
@@ -157,7 +157,7 @@ if __name__ == "__main__":
                             entity = emblookup.lookup(column)
 
                             if not entity is None:
-                                writer.writerow([table_id, row, column, entity])
+                                writer.writerow([table_id, row_i, column_i, entity])
 
                         column_i += 1
 
