@@ -25,7 +25,7 @@ if kg == 'dbpedia':
                 triple = line.split('>')
                 subject = triple[0] + '>'
                 object = triple[2][1:].replace('\\\"', '\'').replace('\'@en', '\"@en')
-                fd_out.write(subject + ' ' + alias_predicate + ' ' + object)"""
+                fd_out.write(subject + ' ' + alias_predicate + ' ' + object)
 
 elif kg == 'wikidata':
     dir = sys.argv[2]
