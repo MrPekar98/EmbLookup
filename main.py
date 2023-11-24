@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     print('Linking')
     emblookup = LookupFromFAISSIndex()
-    start = time.time()
+    times = dict()
 
     with open(output_file, 'w') as out_file:
         writer = csv.writer(out_file, delimiter = ',')
@@ -144,6 +144,7 @@ if __name__ == "__main__":
                 row_i = 0
                 reader = csv.reader(in_file, delimiter = ',')
                 skip = has_headers
+                start = time.time() * 1000
 
                 for row in reader:
                     column_i = 0
@@ -163,4 +164,12 @@ if __name__ == "__main__":
 
                     row_i += 1
 
-    duration = time.time() - start
+                duration = time.time() * 1000 - start
+                times[table_file] = duration
+
+    with open('runtimes.csv', 'w') as times_file:
+        writer = csv.writer(times_file, delimiter = ',')
+        writer.writerow(['table', 'miliseconds'])
+
+        for table in times:
+            writer.writerow([table, times[table]])
