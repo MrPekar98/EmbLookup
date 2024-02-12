@@ -132,44 +132,39 @@ if __name__ == "__main__":
 
     print('Linking')
     emblookup = LookupFromFAISSIndex()
-    times = dict()
 
     with open(output_file, 'w') as out_file:
-        writer = csv.writer(out_file, delimiter = ',')
+        with open('runtimes.csv', 'w') as times_file:
+            writer = csv.writer(out_file, delimiter = ',')
+            time_writer = csv.writer(times_file, delimiter = ',')
+            time_writer.writerow(['table', 'miliseconds'])
 
-        for table_file in files:
-            table_id = table_file.replace('.csv', '')
+            for table_file in files:
+                table_id = table_file.replace('.csv', '')
 
-            with open(table_dir + table_file, 'r') as in_file:
-                row_i = 0
-                reader = csv.reader(in_file, delimiter = ',')
-                skip = has_headers
-                start = time.time() * 1000
+                with open(table_dir + table_file, 'r') as in_file:
+                    row_i = 0
+                    reader = csv.reader(in_file, delimiter = ',')
+                    skip = has_headers
+                    start = time.time() * 1000
 
-                for row in reader:
-                    column_i = 0
+                    for row in reader:
+                        column_i = 0
 
-                    if skip:
-                        skip = False
-                        continue
+                        if skip:
+                            skip = False
+                            continue
 
-                    for column in row:
-                        if not column.lstrip('-').replace('.', '', 1).replace('e-', '', 1).replace('e', '', 1).isdigit() and len(column) > 0:
-                            entity = emblookup.lookup(column)
+                        for column in row:
+                            if not column.lstrip('-').replace('.', '', 1).replace('e-', '', 1).replace('e', '', 1).isdigit() and len(column) > 0:
+                                entity = emblookup.lookup(column)
 
-                            if not entity is None:
-                                writer.writerow([table_id, row_i, column_i, entity])
+                                if not entity is None:
+                                    writer.writerow([table_id, row_i, column_i, entity])
 
-                        column_i += 1
+                            column_i += 1
 
-                    row_i += 1
+                        row_i += 1
 
-                duration = time.time() * 1000 - start
-                times[table_file] = duration
-
-    with open('runtimes.csv', 'w') as times_file:
-        writer = csv.writer(times_file, delimiter = ',')
-        writer.writerow(['table', 'miliseconds'])
-
-        for table in times:
-            writer.writerow([table, times[table]])
+                    duration = time.time() * 1000 - start
+                    time_writer.writerow([table_file, duration])
