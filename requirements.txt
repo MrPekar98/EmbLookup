@@ -4,3 +4,4 @@ faiss-cpu
 pytorch_metric_learning
 sqlalchemy
 fasttext
+packaging
