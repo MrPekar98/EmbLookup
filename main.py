@@ -1,11 +1,12 @@
 # Usage:
-#        python3 main.py <CSV_DIR> <ALIAS_FILE> <INDEX_MAPPING_FILE> <PROCESSED_ALIASES> [-h]
+#        python3 main.py <CSV_DIR> <ALIAS_FILE> <INDEX_MAPPING_FILE> <PROCESSED_ALIASES> [-h] [-T <TIME LIMIT>]
 #
 # <CSV_FILE>: Directory of CSV files of tables to be linked to KG
 # <ALIAS_FILE>: CSV file of KG entity aliases
 # <INDEX_MAPPING_FILE>: Mapping CSV file of KG entities
 # <PROCESSED_ALIASES>: CSV file of pre-processed alieases
 # -h: Flag to tell that the tables have headers
+# -T: Optional parameter to set a time limit in minutes after which the entity linking will stop
 
 import pandas as pd
 import torch
@@ -117,7 +118,19 @@ if __name__ == "__main__":
 
     table_dir = sys.argv[1]
     output_file = 'results.csv'
-    has_headers = len(sys.argv) == 6 and sys.argv[5] == '-h'
+    has_headers = len(sys.argv) > 5 and (sys.argv[5] == '-h' or sys.argv[6] == '-h' or sys.argv[7] == '-h')
+    time_limit = -1
+
+    if len(sys.argv) > 5:
+        if sys.argv[5] == '-T':
+            time_limit = int(sys.argv[6])
+
+        elif sys.argv[6] == '-T':
+            time_limit = int(sys.argv[7])
+
+        else:
+            print('Did not understand time limit parameter')
+            exit(1)
 
     if not table_dir.endswith('/'):
         table_dir += '/'
@@ -132,6 +145,7 @@ if __name__ == "__main__":
 
     print('Linking')
     emblookup = LookupFromFAISSIndex()
+    linking_start = time.time()
 
     with open(output_file, 'w') as out_file:
         with open('runtimes.csv', 'w') as times_file:
@@ -140,6 +154,10 @@ if __name__ == "__main__":
             time_writer.writerow(['table', 'miliseconds'])
 
             for table_file in files:
+                if time_limit > 0 and (time.time() - linking_start) / 60 >= time_limit:
+                    print('Time limit reached')
+                    break
+
                 table_id = table_file.replace('.csv', '')
 
                 with open(table_dir + table_file, 'r') as in_file:
