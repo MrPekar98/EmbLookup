@@ -1,12 +1,14 @@
 # Usage:
-#        python3 main.py <CSV_DIR> <ALIAS_FILE> <INDEX_MAPPING_FILE> <PROCESSED_ALIASES> [-h] [-T <TIME LIMIT>]
+#        python3 main.py <CSV_DIR> <ALIAS_FILE> <INDEX_MAPPING_FILE> <PROCESSED_ALIASES> [-h] [-T <TIME LIMIT>] [-c]
 #
+# ARGUMENTS MUST BE PARSED IN THE SPECIFIED ORDER
 # <CSV_FILE>: Directory of CSV files of tables to be linked to KG
 # <ALIAS_FILE>: CSV file of KG entity aliases
 # <INDEX_MAPPING_FILE>: Mapping CSV file of KG entities
 # <PROCESSED_ALIASES>: CSV file of pre-processed alieases
 # -h: Flag to tell that the tables have headers
 # -T: Optional parameter to set a time limit in minutes after which the entity linking will stop
+# -c: Flag to only retrieve candidate entities
 
 import pandas as pd
 import torch
@@ -94,7 +96,7 @@ class LookupFromFAISSIndex:
         # load fasttext model with default parameters
         self.fasttext_model = utils.load_fasttext_model()
 
-    def lookup(self, query):
+    def lookup(self, query, only_candidates = False):
         try:
             query = query.lower()
             alias_str_tensor = self.string_helper.string_to_tensor(query)
@@ -106,6 +108,9 @@ class LookupFromFAISSIndex:
             embedding = self.emblookup_model.get_embedding(alias_str_tensor, fasttext_embedding)
             distances, indices, words = self.index.lookup(embedding.numpy(), k=5)
 
+            if only_candidates:
+                return [self.ids[idx] for idx in indices[0]]
+
             return self.ids[indices[0][0]]
 
         except ValueError as e:
@@ -113,24 +118,26 @@ class LookupFromFAISSIndex:
 
 if __name__ == "__main__":
     if len(sys.argv) < 5:
-        print('Missing argument. See top of this file for instructions.')
-        exist(1)
+        print('Missing arguments. See top of this file for instructions.')
+        exit(1)
 
     table_dir = sys.argv[1]
     output_file = 'results.csv'
-    has_headers = len(sys.argv) > 5 and (sys.argv[5] == '-h' or sys.argv[6] == '-h' or sys.argv[7] == '-h')
+    flags = sys.argv[5:]
+    have_headers = False
     time_limit = -1
+    only_candidates = False
 
-    if len(sys.argv) > 5:
-        if sys.argv[5] == '-T':
-            time_limit = int(sys.argv[6])
+    for i in range(len(flags)):
+        if flags[i] == '-h':
+            have_headers = True
+        
+        elif flags[i] == '-c':
+            only_candidates = True
 
-        elif sys.argv[6] == '-T':
-            time_limit = int(sys.argv[7])
-
-        else:
-            print('Did not understand time limit parameter')
-            exit(1)
+        elif flags[i] == '-T':
+            if i + 1 < len(flags):
+                time_limit = int(flags[i + 1])
 
     if not table_dir.endswith('/'):
         table_dir += '/'
@@ -163,7 +170,7 @@ if __name__ == "__main__":
                 with open(table_dir + table_file, 'r') as in_file:
                     row_i = 0
                     reader = csv.reader(in_file, delimiter = ',')
-                    skip = has_headers
+                    skip = have_headers
                     start = time.time() * 1000
 
                     for row in reader:
@@ -175,10 +182,19 @@ if __name__ == "__main__":
 
                         for column in row:
                             if not column.lstrip('-').replace('.', '', 1).replace('e-', '', 1).replace('e', '', 1).isdigit() and len(column) > 0:
-                                entity = emblookup.lookup(column)
+                                result = emblookup.lookup(column, only_candidates = only_candidates)
 
-                                if not entity is None:
-                                    writer.writerow([table_id, row_i, column_i, entity])
+                                if not result is None:
+                                    if only_candidates:
+                                        entity_str = ''
+
+                                        for entity in result:
+                                            entity_str += entity + ' '
+
+                                        writer.writerow([table_id, row_i, column_i, entity_str])
+
+                                    else:
+                                        writer.writerow([table_id, row_i, column_i, result])
 
                             column_i += 1
 
