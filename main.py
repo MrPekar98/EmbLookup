@@ -106,7 +106,7 @@ class LookupFromFAISSIndex:
             fasttext_embedding = torch.unsqueeze(fasttext_embedding, dim=0)
 
             embedding = self.emblookup_model.get_embedding(alias_str_tensor, fasttext_embedding)
-            distances, indices, words = self.index.lookup(embedding.numpy(), k=5)
+            distances, indices, words = self.index.lookup(embedding.numpy(), k=10)
 
             if only_candidates:
                 return [self.ids[idx] for idx in indices[0]]
